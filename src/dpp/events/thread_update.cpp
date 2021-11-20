@@ -39,13 +39,18 @@ using namespace dpp;
 void thread_update::handle(discord_client* client, json& j, const std::string& raw) {
 	json& d = j["d"];
 
-	dpp::thread t;
-	t.fill_from_json(&d);
-	dpp::guild* g = dpp::find_guild(t.guild_id);
+	dpp::channel* c = dpp::find_channel(SnowflakeNotNull(&d, "id"));
+	if (!c) {
+		c = new dpp::thread();
+	}
+	c->fill_from_json(&d);
+	dpp::get_channel_cache()->store(c);
+
+	dpp::guild* g = dpp::find_guild(c->guild_id);
 	if (g) {
 		if (!client->creator->dispatch.thread_update.empty()) {
 			dpp::thread_update_t tu(client, raw);
-			tu.updated = t;
+			tu.updated = *static_cast<dpp::thread*>(c);
 			tu.updating_guild = g;
 			call_event(client->creator->dispatch.thread_update, tu);
 		}

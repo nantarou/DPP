@@ -39,14 +39,19 @@ using namespace dpp;
 void thread_create::handle(discord_client* client, json& j, const std::string& raw) {
 	json& d = j["d"];
 
-	dpp::thread t;
-	t.fill_from_json(&d);
-	dpp::guild* g = dpp::find_guild(t.guild_id);
+	dpp::channel* c = dpp::find_channel(SnowflakeNotNull(&d, "id"));
+	if (!c) {
+		c = new dpp::thread();
+	}
+	c->fill_from_json(&d);
+	dpp::get_channel_cache()->store(c);
+
+	dpp::guild* g = dpp::find_guild(c->guild_id);
 	if (g) {
-		g->threads.push_back(t.id);
+		g->threads.push_back(c->id);
 		if (!client->creator->dispatch.thread_create.empty()) {
 			dpp::thread_create_t tc(client, raw);
-			tc.created = t;
+			tc.created = *static_cast<dpp::thread*>(c);
 			tc.creating_guild = g;
 			call_event(client->creator->dispatch.thread_create, tc);
 		}

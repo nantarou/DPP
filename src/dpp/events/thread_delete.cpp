@@ -39,20 +39,22 @@ using namespace dpp;
 void thread_delete::handle(discord_client* client, json& j, const std::string& raw) {
 	json& d = j["d"];
 
-	dpp::thread t;
-	t.fill_from_json(&d);
-	dpp::guild* g = dpp::find_guild(t.guild_id);
-	if (g) {
-		auto gt = std::find(g->threads.begin(), g->threads.end(), t.id);
-		if (gt != g->threads.end()) {
-			g->threads.erase(gt);
+	dpp::channel* c = dpp::find_channel(SnowflakeNotNull(&d, "id"));
+	if (c) {
+		dpp::guild* g = dpp::find_guild(c->guild_id);
+		if (g) {
+			auto gt = std::find(g->threads.begin(), g->threads.end(), c->id);
+			if (gt != g->threads.end()) {
+				g->threads.erase(gt);
+			}
+			if (!client->creator->dispatch.thread_delete.empty()) {
+				dpp::thread_delete_t td(client, raw);
+				td.deleted = *static_cast<dpp::thread*>(c);
+				td.deleting_guild = g;
+				call_event(client->creator->dispatch.thread_delete, td);
+			}
 		}
-		if (!client->creator->dispatch.thread_delete.empty()) {
-			dpp::thread_delete_t td(client, raw);
-			td.deleted = t;
-			td.deleting_guild = g;
-			call_event(client->creator->dispatch.thread_delete, td);
-		}
+		dpp::get_channel_cache()->remove(c);
 	}
 }
 }};
